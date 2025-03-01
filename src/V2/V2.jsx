@@ -6,7 +6,7 @@ function V2() {
 
   const fetchData = async () => {
     try {
-      const response = await fetch('http://192.168.43.137/data'); // Update with ESP32 #3's IP
+      const response = await fetch('http://192.168.43.235/data'); // Update with ESP32 #3's IP
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
