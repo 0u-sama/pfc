@@ -1,9 +1,9 @@
-import V2 from "./V2/V2";
+import Local from "./Local/Local.jsx";
 
 export default function App() {
     return (
         <div>
-            <V2 />
+            <Local />
         </div>
     );
 }
