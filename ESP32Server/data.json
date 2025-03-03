@@ -1,12 +1,12 @@
 {
   "ESP32_2CBCBB9271D0": {
     "id": "ESP32_2CBCBB9271D0",
-    "temperature": 24.41,
-    "humidity": 40.40625,
+    "temperature": 23.82,
+    "humidity": 46.79199,
     "accelerometer": {
-      "x": -18,
-      "y": -19,
-      "z": -26
+      "x": -2,
+      "y": -3,
+      "z": -3
     },
     "vibration_frequency": 0,
     "gps": {

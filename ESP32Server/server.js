@@ -32,7 +32,6 @@ app.post('/update', (req, res) => {
     console.error('Error reading JSON files:', err);
   }
 
-  // Add new flag and preserve name if first time
   if (!currentData[id]) {
     incomingData.new = true;
   } else {
@@ -40,21 +39,15 @@ app.post('/update', (req, res) => {
     incomingData.name = currentData[id].name || '';
   }
 
-  // Check fire risk (temp > 35°C AND humidity < 20%)
   incomingData.fireRisk = incomingData.temperature > 35 && incomingData.humidity < 20;
-
-  // Update current data
   currentData[id] = incomingData;
 
-  // Compare with old data to set inactivity
   const oldClientData = oldData[id] || {};
   const isSame = JSON.stringify(oldClientData) === JSON.stringify(incomingData);
-  currentData[id].inactive = isSame; // True if no change since last update
+  currentData[id].inactive = isSame;
 
-  // Write current data
   try {
     fs.writeFileSync(dataFilePath, JSON.stringify(currentData, null, 2));
-    // Update old data only if changed
     if (!isSame) {
       oldData[id] = incomingData;
       fs.writeFileSync(oldDataFilePath, JSON.stringify(oldData, null, 2));
@@ -101,6 +94,37 @@ app.post('/set-name', (req, res) => {
     } catch (err) {
       console.error('Error writing data.json:', err);
       res.status(500).send('Failed to update name');
+    }
+  } else {
+    res.status(404).send('Client ID not found');
+  }
+});
+
+app.delete('/delete', (req, res) => {
+  const { id } = req.body;
+  if (!id) return res.status(400).send('Missing id in payload');
+
+  let currentData = {};
+  let oldData = {};
+  try {
+    currentData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
+    oldData = JSON.parse(fs.readFileSync(oldDataFilePath, 'utf8'));
+  } catch (err) {
+    console.error('Error reading JSON files:', err);
+    return res.status(500).send('Failed to read data');
+  }
+
+  if (currentData[id]) {
+    delete currentData[id]; // Remove from data.json
+    delete oldData[id];    // Remove from old_data.json
+    try {
+      fs.writeFileSync(dataFilePath, JSON.stringify(currentData, null, 2));
+      fs.writeFileSync(oldDataFilePath, JSON.stringify(oldData, null, 2));
+      console.log(`Deleted client ${id}`);
+      res.status(200).send('Client deleted');
+    } catch (err) {
+      console.error('Error writing JSON files:', err);
+      res.status(500).send('Failed to delete client');
     }
   } else {
     res.status(404).send('Client ID not found');
