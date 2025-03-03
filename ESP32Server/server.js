@@ -6,46 +6,70 @@ const port = 3000;
 
 app.use(express.json());
 app.use(cors());
-const jsonFilePath = './data.json';
 
-if (!fs.existsSync(jsonFilePath)) {
-  fs.writeFileSync(jsonFilePath, JSON.stringify({}));
+const dataFilePath = './data.json';
+const oldDataFilePath = './old_data.json';
+
+// Initialize files if they don’t exist
+if (!fs.existsSync(dataFilePath)) {
+  fs.writeFileSync(dataFilePath, JSON.stringify({}));
+}
+if (!fs.existsSync(oldDataFilePath)) {
+  fs.writeFileSync(oldDataFilePath, JSON.stringify({}));
 }
 
 app.post('/update', (req, res) => {
-  const data = req.body;
-  const id = data.id;
+  const incomingData = req.body;
+  const id = incomingData.id;
   if (!id) return res.status(400).send('Missing id in payload');
 
   let currentData = {};
+  let oldData = {};
   try {
-    const fileContent = fs.readFileSync(jsonFilePath, 'utf8');
-    currentData = JSON.parse(fileContent);
+    currentData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
+    oldData = JSON.parse(fs.readFileSync(oldDataFilePath, 'utf8'));
   } catch (err) {
-    console.error('Error reading data.json:', err);
+    console.error('Error reading JSON files:', err);
   }
 
+  // Add new flag and preserve name if first time
   if (!currentData[id]) {
-    data.new = true; // Flag new clients
+    incomingData.new = true;
   } else {
-    data.new = false;
-    data.name = currentData[id].name || ''; // Preserve existing name
+    incomingData.new = false;
+    incomingData.name = currentData[id].name || '';
   }
-  currentData[id] = data;
 
+  // Check fire risk (temp > 35°C AND humidity < 20%)
+  incomingData.fireRisk = incomingData.temperature > 35 && incomingData.humidity < 20;
+
+  // Update current data
+  currentData[id] = incomingData;
+
+  // Compare with old data to set inactivity
+  const oldClientData = oldData[id] || {};
+  const isSame = JSON.stringify(oldClientData) === JSON.stringify(incomingData);
+  currentData[id].inactive = isSame; // True if no change since last update
+
+  // Write current data
   try {
-    fs.writeFileSync(jsonFilePath, JSON.stringify(currentData, null, 2));
+    fs.writeFileSync(dataFilePath, JSON.stringify(currentData, null, 2));
+    // Update old data only if changed
+    if (!isSame) {
+      oldData[id] = incomingData;
+      fs.writeFileSync(oldDataFilePath, JSON.stringify(oldData, null, 2));
+    }
     console.log(`Updated data for ${id}`);
     res.status(200).send('Data updated');
   } catch (err) {
-    console.error('Error writing data.json:', err);
+    console.error('Error writing JSON files:', err);
     res.status(500).send('Failed to update data');
   }
 });
 
 app.get('/data', (req, res) => {
   try {
-    const fileContent = fs.readFileSync(jsonFilePath, 'utf8');
+    const fileContent = fs.readFileSync(dataFilePath, 'utf8');
     res.setHeader('Content-Type', 'application/json');
     res.status(200).send(fileContent);
   } catch (err) {
@@ -60,7 +84,7 @@ app.post('/set-name', (req, res) => {
 
   let currentData = {};
   try {
-    const fileContent = fs.readFileSync(jsonFilePath, 'utf8');
+    const fileContent = fs.readFileSync(dataFilePath, 'utf8');
     currentData = JSON.parse(fileContent);
   } catch (err) {
     console.error('Error reading data.json:', err);
@@ -69,9 +93,9 @@ app.post('/set-name', (req, res) => {
 
   if (currentData[id]) {
     currentData[id].name = name;
-    currentData[id].new = false; // Clear new flag after naming
+    currentData[id].new = false;
     try {
-      fs.writeFileSync(jsonFilePath, JSON.stringify(currentData, null, 2));
+      fs.writeFileSync(dataFilePath, JSON.stringify(currentData, null, 2));
       console.log(`Set name for ${id} to ${name}`);
       res.status(200).send('Name updated');
     } catch (err) {
@@ -84,5 +108,5 @@ app.post('/set-name', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhostyoure localhost:${port}`);
+  console.log(`Server running at http://localhost:${port}`);
 });

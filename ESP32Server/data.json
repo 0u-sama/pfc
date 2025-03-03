@@ -1,30 +1,12 @@
 {
-  "ESP32_2FBCBB9271D0": {
-    "id": "ESP32_2FBCBB9271D0",
-    "temperature": 23.79,
-    "humidity": 42.95605,
-    "accelerometer": {
-      "x": -22,
-      "y": -25,
-      "z": -25
-    },
-    "vibration_frequency": 157.208,
-    "gps": {
-      "latitude": 0,
-      "longitude": 0
-    },
-    "timestamp": "00:05:00",
-    "new": false,
-    "name": "tree2"
-  },
   "ESP32_2CBCBB9271D0": {
     "id": "ESP32_2CBCBB9271D0",
-    "temperature": 24.18,
-    "humidity": 43.71387,
+    "temperature": 24.41,
+    "humidity": 40.40625,
     "accelerometer": {
-      "x": -208,
-      "y": -211,
-      "z": -219
+      "x": -18,
+      "y": -19,
+      "z": -26
     },
     "vibration_frequency": 0,
     "gps": {
@@ -33,6 +15,8 @@
     },
     "timestamp": "00:00:00",
     "new": false,
-    "name": "tree1"
+    "name": "tree1",
+    "fireRisk": false,
+    "inactive": false
   }
 }

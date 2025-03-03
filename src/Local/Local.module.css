@@ -1,4 +1,3 @@
-/* Existing styles unchanged */
 .App {
   font-family: Arial, sans-serif;
   max-width: 1200px;
@@ -17,11 +16,12 @@ h1 {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  text-align: left;
-  display: inline-block;
-  width: 45%;
+  display: flex; /* Flexbox for centering */
+  flex-direction: column; /* Stack vertically */
+  align-items: center; /* Center horizontally */
+  width: 300px; /* Slimmer width - adjust as needed */
   margin: 10px;
-  vertical-align: top;
+  border: 2px solid green; /* Stable default */
 }
 
 p {
@@ -31,19 +31,44 @@ p {
 
 ul {
   list-style: none;
-  padding-left: 20px;
+  padding-left: 0; /* Remove left padding for centering */
 }
 
 strong {
   color: #333;
 }
 
-/* New styles for inactive clients */
 .inactive {
-  border: 2px solid red; /* Red border for inactive */
+  border: 2px solid gray;
+}
+
+.fireRisk {
+  border: 2px solid yellow;
+}
+
+.falling {
+  border: 2px solid red;
+}
+
+.cutting {
+  border: 2px solid orange;
 }
 
 .warning {
   color: red;
   font-weight: bold;
+}
+
+.locationButton {
+  margin: 10px auto; /* Center button */
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.locationButton:hover {
+  background-color: #0056b3;
 }

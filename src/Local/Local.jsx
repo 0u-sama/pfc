@@ -5,7 +5,6 @@ function Local() {
   const [sensorsData, setSensorsData] = useState({});
   const [hasAlertedDisconnect, setHasAlertedDisconnect] = useState(false);
   const [newClientIds, setNewClientIds] = useState([]);
-  const [activeClients, setActiveClients] = useState({}); // Track last update time per id
 
   const fetchData = async () => {
     try {
@@ -22,7 +21,6 @@ function Local() {
       }
       const data = await response.json();
 
-      // Check for new clients and prompt for name
       Object.entries(data).forEach(([id, sensor]) => {
         if (sensor.new && !newClientIds.includes(id)) {
           const name = window.prompt(`New client detected: ${id}. Enter a name:`, id);
@@ -35,16 +33,6 @@ function Local() {
           }
           setNewClientIds((prev) => [...prev, id]);
         }
-      });
-
-      // Update activeClients with latest timestamp
-      const now = Date.now();
-      setActiveClients((prev) => {
-        const updated = { ...prev };
-        Object.keys(data).forEach((id) => {
-          updated[id] = now; // Mark as active with current time
-        });
-        return updated;
       });
 
       setSensorsData(data);
@@ -72,12 +60,24 @@ function Local() {
     return () => clearInterval(interval);
   }, []);
 
-  // Check if client is inactive (no update for over 5 minutes)
-  const isInactive = (id) => {
-    const lastUpdate = activeClients[id];
-    if (!lastUpdate) return true; // Never updated = inactive
-    const diffSeconds = (Date.now() - lastUpdate) / 1000;
-    return diffSeconds > 300; // 5 minutes = 300s
+  // Determine client status
+  const getStatus = (data) => {
+    const statuses = [];
+    if (data.inactive) statuses.push('Inactive');
+    if (data.fireRisk) statuses.push('Fire Risk');
+    if (data.accelerometer && Math.sqrt(
+      Math.pow(data.accelerometer.x, 2) +
+      Math.pow(data.accelerometer.y, 2) +
+      Math.pow(data.accelerometer.z, 2)
+    ) > 200) statuses.push('Falling');
+    if (data.vibration_frequency >= 500 && data.vibration_frequency <= 1500) statuses.push('Cutting');
+    return statuses.length > 0 ? statuses.join(', ') : 'Stable';
+  };
+
+  // Open Google Maps with GPS coordinates
+  const openMap = (latitude, longitude) => {
+    const url = `https://www.google.com/maps?q=${latitude},${longitude}`;
+    window.open(url, '_blank');
   };
 
   return (
@@ -86,32 +86,40 @@ function Local() {
       {Object.keys(sensorsData).length === 0 ? (
         <p>No ESP32 connected</p>
       ) : (
-        Object.entries(sensorsData).map(([id, data]) => (
-          <div
-            key={id}
-            className={`${styles.dataContainer} ${isInactive(id) ? styles.inactive : ''}`}
-          >
-            <h2>{data.name || id}</h2>
-            {isInactive(id) && (
-              <p className={styles.warning}>Warning: Inactive - Possible issue (last update: {data.timestamp})</p>
-            )}
-            <p><strong>Temperature:</strong> {data.temperature} °C</p>
-            <p><strong>Humidity:</strong> {data.humidity} %</p>
-            <p><strong>Accelerometer:</strong></p>
-            <ul>
-              <li>X: {data.accelerometer.x}</li>
-              <li>Y: {data.accelerometer.y}</li>
-              <li>Z: {data.accelerometer.z}</li>
-            </ul>
-            <p><strong>Vibration Frequency:</strong> {data.vibration_frequency} Hz</p>
-            <p><strong>GPS:</strong></p>
-            <ul>
-              <li>Latitude: {data.gps.latitude}</li>
-              <li>Longitude: {data.gps.longitude}</li>
-            </ul>
-            <p><strong>Timestamp:</strong> {data.timestamp}</p>
-          </div>
-        ))
+        Object.entries(sensorsData).map(([id, data]) => {
+          const status = getStatus(data);
+          return (
+            <div
+              key={id}
+              className={`${styles.dataContainer} ${
+                status.includes('Falling') ? styles.falling :
+                status.includes('Cutting') ? styles.cutting :
+                status.includes('Fire Risk') ? styles.fireRisk :
+                status.includes('Inactive') ? styles.inactive : ''
+              }`}
+            >
+              <h2>{data.name || id}</h2>
+              <p><strong>Status:</strong> {status}</p>
+              <p><strong>Temperature:</strong> {data.temperature} °C</p>
+              <p><strong>Humidity:</strong> {data.humidity} %</p>
+              <p><strong>Last Updated:</strong> {data.timestamp}</p> {/* Added timestamp */}
+              {status !== 'Stable' && (
+                <p className={styles.warning}>
+                  {status.includes('Inactive') ? 'No updates - Check tree!' :
+                   status.includes('Fire Risk') ? 'High fire risk - Inspect now!' :
+                   status.includes('Falling') ? 'Tree falling - Immediate action!' :
+                   status.includes('Cutting') ? 'Possible cutting - Investigate!' : ''}
+                </p>
+              )}
+              <button
+                className={styles.locationButton}
+                onClick={() => openMap(data.gps.latitude, data.gps.longitude)}
+              >
+                Location
+              </button>
+            </div>
+          );
+        })
       )}
     </div>
   );
