@@ -50,6 +50,13 @@ function Local() {
   };
 
   useEffect(() => {
+    // Set background image on body
+    document.body.style.backgroundImage = "url('/src/assets/forest.jpg')";
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundRepeat = 'no-repeat';
+    document.body.style.backgroundAttachment = 'fixed';
+
     const loadData = async () => {
       await fetchData();
     };
@@ -59,7 +66,11 @@ function Local() {
       await fetchData();
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      // Optional: Clean up body style on unmount - comment out if you want it persistent
+      // document.body.style.backgroundImage = '';
+    };
   }, []);
 
   const getStatus = (data) => {

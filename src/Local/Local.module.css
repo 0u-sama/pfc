@@ -3,7 +3,6 @@
   max-width: 1200px;
   margin: 20px auto;
   padding: 20px;
-  background-color: #f4f4f4;
   text-align: center;
 }
 
@@ -12,7 +11,8 @@ h1 {
 }
 
 .dataContainer {
-  background: white;
+  background: rgba(255, 255, 255, 0.32); /* Semi-transparent white */
+  backdrop-filter: blur(10px); /* Blur effect */
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -83,13 +83,13 @@ strong {
 }
 
 .menuWrapper {
-  position: relative; /* For dropdown positioning */
+  position: relative;
 }
 
 .menuButton {
   margin: 0 0 0 10px;
   padding: 5px 10px;
-  background-color: #gray;
+  background-color: #f0f0f0;
   color: black;
   border: none;
   border-radius: 5px;
@@ -98,22 +98,22 @@ strong {
 }
 
 .menuButton:hover {
-  background-color: #gray;
+  background-color: #6c757d;
 }
 
 .dropdownMenu {
   position: absolute;
-  top: 100%; /* Below menu button */
-  right: 0; /* Align right */
+  top: 100%;
+  right: 0;
   background-color: white;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   border-radius: 5px;
-  z-index: 10; /* Above other content */
+  z-index: 10;
 }
 
 .dropdownMenu button {
   display: block;
-  width: 100px; /* Fixed width for menu items */
+  width: 100px;
   padding: 5px;
   border: none;
   background-color: white;
@@ -128,13 +128,13 @@ strong {
 .buttonGroup {
   display: flex;
   justify-content: center;
-  gap: 10px; /* Space between buttons */
+  gap: 10px;
   margin-top: 10px;
 }
 
 .actionButton {
   padding: 5px 10px;
-  background-color: #6c757d; /* Gray for Edit/Delete */
+  background-color: #6c757d;
   color: white;
   border: none;
   border-radius: 5px;
