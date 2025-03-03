@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import styles from './Local.module.css';
+import forestImage from './assets/forest.jpg'; // Adjust if in public/
 
 function Local() {
   const [sensorsData, setSensorsData] = useState({});
   const [hasAlertedDisconnect, setHasAlertedDisconnect] = useState(false);
   const [newClientIds, setNewClientIds] = useState([]);
-  const [expandedCards, setExpandedCards] = useState({});
-  const [menuOpen, setMenuOpen] = useState(null);
+  const [modalOpen, setModalOpen] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -50,8 +50,8 @@ function Local() {
   };
 
   useEffect(() => {
-    // Set background image on body
-    document.body.style.backgroundImage = "url('/src/assets/forest.jpg')";
+    // Set background image on body - your style
+    document.body.style.backgroundImage = `url(${forestImage})`;
     document.body.style.backgroundSize = 'cover';
     document.body.style.backgroundPosition = 'center';
     document.body.style.backgroundRepeat = 'no-repeat';
@@ -66,23 +66,26 @@ function Local() {
       await fetchData();
     }, 1000);
 
-    return () => {
-      clearInterval(interval);
-      // Optional: Clean up body style on unmount - comment out if you want it persistent
-      // document.body.style.backgroundImage = '';
-    };
+    return () => clearInterval(interval);
   }, []);
 
   const getStatus = (data) => {
     const statuses = [];
     if (data.inactive) statuses.push('Inactive');
-    if (data.fireRisk) statuses.push('Fire Risk');
     if (data.accelerometer && Math.sqrt(
       Math.pow(data.accelerometer.x, 2) +
       Math.pow(data.accelerometer.y, 2) +
       Math.pow(data.accelerometer.z, 2)
     ) > 200) statuses.push('Falling');
     if (data.vibration_frequency >= 500 && data.vibration_frequency <= 1500) statuses.push('Cutting');
+
+    // Check fire risk like vibration (client-side, no server state)
+    const temp = Number(data.temperature);
+    const hum = Number(data.humidity);
+    if (!isNaN(temp) && !isNaN(hum) && temp > 35 && hum < 20) {
+      statuses.push('Fire Risk');
+    }
+
     return statuses.length > 0 ? statuses.join(', ') : 'Stable';
   };
 
@@ -91,16 +94,8 @@ function Local() {
     window.open(url, '_blank');
   };
 
-  const toggleCard = (id) => {
-    setExpandedCards((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-    setMenuOpen(null);
-  };
-
-  const toggleMenu = (id) => {
-    setMenuOpen((prev) => (prev === id ? null : id));
+  const toggleModal = (id) => {
+    setModalOpen((prev) => (prev === id ? null : id));
   };
 
   const editName = (id, currentName) => {
@@ -112,7 +107,6 @@ function Local() {
         body: JSON.stringify({ id, name: newName }),
       }).catch(err => console.error('Error editing name:', err));
     }
-    setMenuOpen(null);
   };
 
   const deleteClient = (id) => {
@@ -136,7 +130,6 @@ function Local() {
         })
         .catch(err => console.error('Error deleting client:', err));
     }
-    setMenuOpen(null);
   };
 
   return (
@@ -145,114 +138,86 @@ function Local() {
       {Object.keys(sensorsData).length === 0 ? (
         <p>No ESP32 connected</p>
       ) : (
-        Object.entries(sensorsData).map(([id, data]) => {
-          const status = getStatus(data);
-          const isExpanded = expandedCards[id] || false;
-          return (
-            <div
-              key={id}
-              className={`${styles.dataContainer} ${
-                isExpanded ? styles.expanded : styles.collapsed
-              } ${
-                status.includes('Falling') ? styles.falling :
-                status.includes('Cutting') ? styles.cutting :
-                status.includes('Fire Risk') ? styles.fireRisk :
-                status.includes('Inactive') ? styles.inactive : ''
-              }`}
-              onClick={() => toggleCard(id)}
-            >
-              {isExpanded ? (
-                <>
-                  <h2>{data.name || id}</h2>
-                  <p><strong>Status:</strong> {status}</p>
-                  <p><strong>Temperature:</strong> {data.temperature} °C</p>
-                  <p><strong>Humidity:</strong> {data.humidity} %</p>
-                  <p><strong>Last Updated:</strong> {data.timestamp}</p>
-                  {status !== 'Stable' && (
-                    <p className={styles.warning}>
-                      {status.includes('Inactive') ? 'No updates - Check tree!' :
-                       status.includes('Fire Risk') ? 'High fire risk - Inspect now!' :
-                       status.includes('Falling') ? 'Tree falling - Immediate action!' :
-                       status.includes('Cutting') ? 'Possible cutting - Investigate!' : ''}
-                    </p>
-                  )}
-                  <div className={styles.buttonGroup}>
-                    <button
-                      className={styles.actionButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        editName(id, data.name || id);
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className={styles.actionButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteClient(id);
-                      }}
-                    >
-                      Delete
-                    </button>
-                    <button
-                      className={styles.locationButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openMap(data.gps.latitude, data.gps.longitude);
-                      }}
-                    >
-                      Location
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className={styles.collapsedContent}>
-                  <span>{data.name || id}: {status}</span>
-                  <div className={styles.menuWrapper}>
-                    <button
-                      className={styles.menuButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMenu(id);
-                      }}
-                    >
-                      ⋮
-                    </button>
-                    {menuOpen === id && (
-                      <div className={styles.dropdownMenu}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            editName(id, data.name || id);
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteClient(id);
-                          }}
-                        >
-                          Delete
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openMap(data.gps.latitude, data.gps.longitude);
-                          }}
-                        >
-                          Location
-                        </button>
-                      </div>
-                    )}
+        <>
+          <div className={styles.grid}>
+            {Object.entries(sensorsData).map(([id, data]) => {
+              const status = getStatus(data);
+              return (
+                <div
+                  key={id}
+                  className={`${styles.card} ${
+                    status.includes('Falling') ? styles.falling :
+                    status.includes('Cutting') ? styles.cutting :
+                    status.includes('Fire Risk') ? styles.fireRisk :
+                    status.includes('Inactive') ? styles.inactive : ''
+                  }`}
+                  onClick={() => toggleModal(id)}
+                >
+                  <div className={styles.cardContent}>
+                    <span>{data.name || id}: {status}</span>
                   </div>
                 </div>
-              )}
+              );
+            })}
+          </div>
+          {modalOpen && sensorsData[modalOpen] && (
+            <div className={styles.modalOverlay} onClick={() => setModalOpen(null)}>
+              <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                <h2>{sensorsData[modalOpen].name || modalOpen}</h2>
+                <p><strong>Status:</strong> {getStatus(sensorsData[modalOpen])}</p>
+                <p><strong>Temperature:</strong> {sensorsData[modalOpen].temperature} °C</p>
+                <p><strong>Humidity:</strong> {sensorsData[modalOpen].humidity} %</p>
+                <p><strong>Last Updated:</strong> {sensorsData[modalOpen].timestamp}</p>
+                {getStatus(sensorsData[modalOpen]) !== 'Stable' && (
+                  <p className={styles.warning}>
+                    {getStatus(sensorsData[modalOpen]).includes('Inactive') ? 'No updates - Check tree!' :
+                     getStatus(sensorsData[modalOpen]).includes('Fire Risk') ? 'High fire risk - Inspect now!' :
+                     getStatus(sensorsData[modalOpen]).includes('Falling') ? 'Tree falling - Immediate action!' :
+                     getStatus(sensorsData[modalOpen]).includes('Cutting') ? 'Possible cutting - Investigate!' : ''}
+                  </p>
+                )}
+                <div className={styles.buttonGroup}>
+                  <button
+                    className={styles.actionButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      editName(modalOpen, sensorsData[modalOpen].name || modalOpen);
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className={styles.actionButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteClient(modalOpen);
+                    }}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    className={styles.locationButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openMap(sensorsData[modalOpen].gps.latitude, sensorsData[modalOpen].gps.longitude);
+                    }}
+                  >
+                    Location
+                  </button>
+                </div>
+                <button
+                  className={styles.closeButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setModalOpen(null);
+                  }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
-          );
-        })
+          )}
+        </>
       )}
     </div>
   );

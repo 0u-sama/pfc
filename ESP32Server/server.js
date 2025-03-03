@@ -32,6 +32,7 @@ app.post('/update', (req, res) => {
     console.error('Error reading JSON files:', err);
   }
 
+  // Add new flag and preserve name if first time
   if (!currentData[id]) {
     incomingData.new = true;
   } else {
@@ -39,15 +40,21 @@ app.post('/update', (req, res) => {
     incomingData.name = currentData[id].name || '';
   }
 
-  incomingData.fireRisk = incomingData.temperature > 35 && incomingData.humidity < 20;
+  // Remove fireRisk - handled in Local.jsx
+  delete incomingData.fireRisk; // Ensure no fireRisk in incoming data
+
+  // Update current data
   currentData[id] = incomingData;
 
+  // Compare with old data to set inactivity
   const oldClientData = oldData[id] || {};
   const isSame = JSON.stringify(oldClientData) === JSON.stringify(incomingData);
   currentData[id].inactive = isSame;
 
+  // Write current data
   try {
     fs.writeFileSync(dataFilePath, JSON.stringify(currentData, null, 2));
+    // Update old data only if changed
     if (!isSame) {
       oldData[id] = incomingData;
       fs.writeFileSync(oldDataFilePath, JSON.stringify(oldData, null, 2));
@@ -87,6 +94,10 @@ app.post('/set-name', (req, res) => {
   if (currentData[id]) {
     currentData[id].name = name;
     currentData[id].new = false;
+
+    // Remove fireRisk - handled in Local.jsx
+    delete currentData[id].fireRisk; // Ensure no fireRisk in data.json
+
     try {
       fs.writeFileSync(dataFilePath, JSON.stringify(currentData, null, 2));
       console.log(`Set name for ${id} to ${name}`);

@@ -1,21 +1,101 @@
 {
   "ESP32_2CBCBB9271D0": {
     "id": "ESP32_2CBCBB9271D0",
-    "temperature": 23.82,
-    "humidity": 46.79199,
+    "temperature": 25.65,
+    "humidity": 37.14063,
     "accelerometer": {
-      "x": -2,
-      "y": -3,
-      "z": -3
+      "x": 34,
+      "y": 30,
+      "z": 40
     },
     "vibration_frequency": 0,
     "gps": {
       "latitude": 0,
       "longitude": 0
     },
-    "timestamp": "00:00:00",
+    "timestamp": "00:00:09",
     "new": false,
     "name": "tree1",
+    "fireRisk": false,
+    "inactive": false
+  },
+  "ESP32_2CBCBB9271D1": {
+    "id": "ESP32_2CBCBB9271D1",
+    "temperature": 22.65,
+    "humidity": 3.14063,
+    "accelerometer": {
+      "x": 4,
+      "y": 0,
+      "z": 4
+    },
+    "vibration_frequency": 300,
+    "gps": {
+      "latitude": 0,
+      "longitude": 0
+    },
+    "timestamp": "00:00:09",
+    "new": false,
+    "name": "tree2",
+    "fireRisk": false,
+    "inactive": false
+  },
+  "ESP32_2CBCBB9271D2": {
+    "id": "ESP32_2CBCBB9271D2",
+    "temperature": 22.65,
+    "humidity": 3.14063,
+    "accelerometer": {
+      "x": 4,
+      "y": 0,
+      "z": 4
+    },
+    "vibration_frequency": 300,
+    "gps": {
+      "latitude": 0,
+      "longitude": 0
+    },
+    "timestamp": "00:00:09",
+    "new": false,
+    "name": "tree3",
+    "fireRisk": false,
+    "inactive": false
+  },
+  "ESP32_2CBCBB9271D3": {
+    "id": "ESP32_2CBCBB9271D3",
+    "temperature": 22.65,
+    "humidity": 3.14063,
+    "accelerometer": {
+      "x": 4,
+      "y": 0,
+      "z": 4
+    },
+    "vibration_frequency": 300,
+    "gps": {
+      "latitude": 0,
+      "longitude": 0
+    },
+    "timestamp": "00:00:09",
+    "new": false,
+    "name": "tree4",
+    "fireRisk": false,
+    "inactive": false
+  },
+  "ESP32_2CBCBB9271D4": {
+    "id": "ESP32_2CBCBB9271D4",
+    "temperature": 40.65,
+    "humidity": 3.14063,
+    "accelerometer": {
+      "x": 4,
+      "y": 0,
+      "z": 4
+    },
+    "vibration_frequency": 0,
+    "gps": {
+      "latitude": 0,
+      "longitude": 0
+    },
+    "timestamp": "00:00:09",
+    "new": false,
+    "name": "tree5",
     "fireRisk": false,
     "inactive": false
   }

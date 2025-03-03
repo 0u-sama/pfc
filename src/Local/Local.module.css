@@ -4,47 +4,54 @@
   margin: 20px auto;
   padding: 20px;
   text-align: center;
+  position: relative;
 }
 
 h1 {
   color: #333;
+  width: 100%;
 }
 
-.dataContainer {
-  background: rgba(255, 255, 255, 0.32); /* Semi-transparent white */
-  backdrop-filter: blur(10px); /* Blur effect */
-  padding: 15px;
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, 250px);
+  gap: 20px;
+  justify-content: center;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(10px);
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 10px;
   border: 2px solid green;
   cursor: pointer;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center; /* Center text vertically and horizontally */
   transition: all 0.3s ease;
 }
 
-.collapsed {
-  width: 250px;
-}
-
-.expanded {
-  width: 300px;
-  min-height: 200px;
+.cardContent {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center text horizontally */
 }
 
 .collapsedContent {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: center; /* Center text horizontally */
   width: 100%;
 }
 
 .collapsedContent span {
   font-size: 16px;
   font-weight: bold;
+  text-align: center; /* Center text */
 }
 
 p {
@@ -66,7 +73,7 @@ strong {
 }
 
 .fireRisk {
-  border: 2px solid yellow;
+  border: 2px solid #ff4400;
 }
 
 .falling {
@@ -80,49 +87,6 @@ strong {
 .warning {
   color: red;
   font-weight: bold;
-}
-
-.menuWrapper {
-  position: relative;
-}
-
-.menuButton {
-  margin: 0 0 0 10px;
-  padding: 5px 10px;
-  background-color: #f0f0f0;
-  color: black;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.menuButton:hover {
-  background-color: #6c757d;
-}
-
-.dropdownMenu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background-color: white;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 5px;
-  z-index: 10;
-}
-
-.dropdownMenu button {
-  display: block;
-  width: 100px;
-  padding: 5px;
-  border: none;
-  background-color: white;
-  text-align: left;
-  cursor: pointer;
-}
-
-.dropdownMenu button:hover {
-  background-color: #f0f0f0;
 }
 
 .buttonGroup {
@@ -156,4 +120,44 @@ strong {
 
 .locationButton:hover {
   background-color: #0056b3;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: 300px;
+  padding: 20px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.closeButton {
+  margin-top: 10px;
+  padding: 5px 10px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background-color: #c82333;
 }

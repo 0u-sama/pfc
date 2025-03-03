@@ -14,8 +14,8 @@ const char* serverIP = "192.168.43.235"; // Gateway ESP32 IP
 #define yPin 39
 #define zPin 34
 #define ledPin 13
-int led = 2;
-int vs = 4;
+int led = 12;
+int vs = 14;
 #define RX_PIN 17
 #define TX_PIN 16
 #define SEALEVELPRESSURE_HPA (1013.25)
