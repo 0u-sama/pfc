@@ -125,7 +125,6 @@ void loop() {
       HTTPClient http;
       http.begin(String("http://") + serverIP + "/update");
       http.addHeader("Content-Type", "application/json");
-
       StaticJsonDocument<512> doc;
       doc["id"] = clientId; // Dynamic ID
       doc["temperature"] = temperature;

@@ -1,3 +1,20 @@
+/* Apply background image to the entire body */
+body {
+  margin: 0;
+  padding: 0;
+  background-image: url('../assets/forest.jpg'); /* Adjust path if needed */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  min-height: 100vh; /* Ensure body covers the viewport */
+}
+
+/* Hide scrollbar for WebKit browsers */
+body::-webkit-scrollbar {
+  display: none;
+}
+
 .App {
   font-family: Arial, sans-serif;
   max-width: 1200px;
@@ -30,28 +47,32 @@ h1 {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center; /* Center text vertically and horizontally */
+  align-items: center;
   transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: scale(1.05);
 }
 
 .cardContent {
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center; /* Center text horizontally */
+  align-items: center;
 }
 
 .collapsedContent {
   display: flex;
   flex-direction: column;
-  align-items: center; /* Center text horizontally */
+  align-items: center;
   width: 100%;
 }
 
 .collapsedContent span {
   font-size: 16px;
   font-weight: bold;
-  text-align: center; /* Center text */
+  text-align: center;
 }
 
 p {
@@ -109,6 +130,11 @@ strong {
   background-color: #5a6268;
 }
 
+.actionButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
 .locationButton {
   padding: 5px 10px;
   background-color: #007bff;
@@ -120,6 +146,22 @@ strong {
 
 .locationButton:hover {
   background-color: #0056b3;
+}
+
+.silenceButton {
+  margin-left: 10px;
+  padding: 4px 8px;
+  background-color: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.3s;
+}
+
+.silenceButton:hover {
+  background-color: #f57c00;
 }
 
 .modalOverlay {
@@ -160,4 +202,127 @@ strong {
 
 .closeButton:hover {
   background-color: #c82333;
+}
+
+.logoutButton {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 8px 16px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 1001;
+  max-width: 10%;
+}
+
+.logoutButton:hover {
+  background-color: #cc0000;
+}
+
+.enable-alerts-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.enable-alerts-content {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+
+.enable-alerts-content p {
+  margin: 10px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.enable-alerts-button {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.enable-alerts-button:hover {
+  background-color: #0056b3;
+}
+
+.toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 10px 20px;
+  color: #333;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 300px;
+  max-width: 500px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.toast.falling {
+  border-left: 4px solid red;
+}
+
+.toast.cutting {
+  border-left: 4px solid orange;
+}
+
+.toast.fireRisk {
+  border-left: 4px solid #ff4400;
+}
+
+.toast.inactive {
+  border-left: 4px solid gray;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.offlineMessage {
+  color: #ff9800;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 10px;
 }
