@@ -1,0 +1,26 @@
+.appWrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.nav {
+  background: rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(10px);
+  padding: 10px 20px;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.navLink {
+  color: #333;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.navLink:hover {
+  color: #007bff;
+}
