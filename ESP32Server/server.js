@@ -11,7 +11,6 @@ app.use(cors());
 
 // Initialize Firebase Admin SDK
 const serviceAccount = require('./serviceAccountKey.json'); // Path to your downloaded service account key
-
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: 'https://anti-poaching-a00de-default-rtdb.europe-west1.firebasedatabase.app/',
@@ -52,6 +51,17 @@ const writeToLocalFile = (filePath, data) => {
   }
 };
 
+// Function to sync local JSON to Firebase
+const syncToFirebase = async (data) => {
+  try {
+    await currentDataRef.set(data); // Copy the entire local JSON content to Firebase
+    console.log('Successfully synced data.json to Firebase');
+  } catch (error) {
+    console.error('Error syncing to Firebase:', error);
+    // Failure to sync doesn’t affect local operation
+  }
+};
+
 // GET /data.json - Serve the local data.json file
 app.get('/data.json', (req, res) => {
   const data = readLocalFile(dataFilePath);
@@ -59,72 +69,66 @@ app.get('/data.json', (req, res) => {
   res.status(200).send(JSON.stringify(data, null, 2));
 });
 
-// POST /update - Update sensor data in both Firebase and local JSON
+// POST /update - Update sensor data in local JSON first, then sync to Firebase
 app.post('/update', (req, res) => {
   const incomingData = req.body;
   const id = incomingData.id;
   if (!id) return res.status(400).send('Missing id in payload');
 
-  // Add new flag and preserve name if first time (check Firebase first)
-  currentDataRef.child(id).once('value', (snapshot) => {
-    const existingData = snapshot.val() || {};
-    incomingData.new = !existingData.id;
-    incomingData.name = existingData.name || '';
+  // Step 1: Read local JSON first (shift from Firebase-first to local-first)
+  let currentLocalData = readLocalFile(dataFilePath);
+  const existingData = currentLocalData[id] || {};
+  incomingData.new = !existingData.id; // Check local data for 'new' flag
+  incomingData.name = existingData.name || '';
 
-    // Remove fireRisk - handled in Local.jsx
-    delete incomingData.fireRisk;
+  // Remove fireRisk - handled in Local.jsx
+  delete incomingData.fireRisk;
 
-    // Compare with old data to set inactivity (check Firebase oldData)
-    oldDataRef.child(id).once('value', (oldSnapshot) => {
-      const oldClientData = oldSnapshot.val() || {};
-      const isSame = JSON.stringify(oldClientData) === JSON.stringify(incomingData);
+  // Step 2: Compare with old data (use local old_data.json instead of Firebase)
+  let oldLocalData = readLocalFile(oldDataFilePath);
+  const oldClientData = oldLocalData[id] || {};
+  const isSame = JSON.stringify(oldClientData) === JSON.stringify(incomingData);
 
-      // Update Firebase current data
-      currentDataRef.child(id).set(incomingData, (error) => {
-        if (error) {
-          console.error('Error updating current data in Firebase:', error);
-          // Fallback to local update if Firebase fails
-          let currentLocalData = readLocalFile(dataFilePath);
-          currentLocalData[id] = incomingData;
-          currentLocalData[id].inactive = isSame;
-          writeToLocalFile(dataFilePath, currentLocalData);
+  // Step 3: Update local JSON first
+  currentLocalData[id] = incomingData;
+  currentLocalData[id].inactive = isSame;
+  writeToLocalFile(dataFilePath, currentLocalData);
 
-          // Update local old data if changed
-          let oldLocalData = readLocalFile(oldDataFilePath);
-          if (!isSame) {
+  // Step 4: Sync the updated local JSON to Firebase
+  syncToFirebase(currentLocalData);
+
+  // Step 5: Update Firebase currentData (original behavior) and local old data
+  currentDataRef.child(id).set(incomingData, (error) => {
+    if (error) {
+      console.error('Error updating current data in Firebase:', error);
+      // Local update already happened, so no fallback needed here
+      console.log(`Updated data for ${id} in local storage (Firebase update failed)`);
+
+      // Update local old data if changed
+      if (!isSame) {
+        oldLocalData[id] = incomingData;
+        writeToLocalFile(oldDataFilePath, oldLocalData);
+      }
+
+      res.status(200).send('Data updated (local success, Firebase failed)');
+    } else {
+      // Firebase update succeeded
+      if (!isSame) {
+        oldDataRef.child(id).set(incomingData, (error) => {
+          if (error) {
+            console.error('Error updating old data in Firebase:', error);
+          } else {
             oldLocalData[id] = incomingData;
             writeToLocalFile(oldDataFilePath, oldLocalData);
+            console.log(`Updated old data for ${id} in Firebase and local storage`);
           }
+        });
+      } else {
+        console.log(`Updated data for ${id} (no change in old data)`);
+      }
 
-          console.log(`Updated data for ${id} (Firebase failed, using local storage)`);
-          res.status(200).send('Data updated (local only due to Firebase failure)');
-        } else {
-          // Firebase update succeeded, now update local JSON
-          let currentLocalData = readLocalFile(dataFilePath);
-          currentLocalData[id] = incomingData;
-          currentLocalData[id].inactive = isSame;
-          writeToLocalFile(dataFilePath, currentLocalData);
-
-          // Update old data in Firebase and local JSON if changed
-          if (!isSame) {
-            oldDataRef.child(id).set(incomingData, (error) => {
-              if (error) {
-                console.error('Error updating old data in Firebase:', error);
-              } else {
-                let oldLocalData = readLocalFile(oldDataFilePath);
-                oldLocalData[id] = incomingData;
-                writeToLocalFile(oldDataFilePath, oldLocalData);
-                console.log(`Updated old data for ${id} in Firebase and local storage`);
-              }
-            });
-          } else {
-            console.log(`Updated data for ${id} (no change in old data)`);
-          }
-
-          res.status(200).send('Data updated');
-        }
-      });
-    });
+      res.status(200).send('Data updated');
+    }
   });
 });
 
@@ -143,98 +147,71 @@ app.get('/data', (req, res) => {
   });
 });
 
-// POST /set-name - Set a name for a sensor (update both Firebase and local JSON)
+// POST /set-name - Set a name for a sensor (update local JSON first, then sync to Firebase)
 app.post('/set-name', (req, res) => {
   const { id, name } = req.body;
   if (!id || !name) return res.status(400).send('Missing id or name');
 
-  currentDataRef.child(id).once('value', (snapshot) => {
-    if (snapshot.exists()) {
-      currentDataRef.child(id).update({ name, new: false }, (error) => {
-        if (error) {
-          console.error('Error updating name in Firebase:', error);
-          // Fallback to local update
-          let currentLocalData = readLocalFile(dataFilePath);
-          if (currentLocalData[id]) {
-            currentLocalData[id].name = name;
-            currentLocalData[id].new = false;
-            writeToLocalFile(dataFilePath, currentLocalData);
-            console.log(`Set name for ${id} to ${name} (Firebase failed, using local storage)`);
-            res.status(200).send('Name updated (local only due to Firebase failure)');
-          } else {
-            res.status(404).send('Client ID not found');
-          }
-        } else {
-          // Firebase update succeeded, now update local JSON
-          let currentLocalData = readLocalFile(dataFilePath);
-          if (currentLocalData[id]) {
-            currentLocalData[id].name = name;
-            currentLocalData[id].new = false;
-            writeToLocalFile(dataFilePath, currentLocalData);
-            console.log(`Set name for ${id} to ${name}`);
-            res.status(200).send('Name updated');
-          } else {
-            res.status(404).send('Client ID not found');
-          }
-        }
-      });
-    } else {
-      // Check local JSON as a fallback
-      let currentLocalData = readLocalFile(dataFilePath);
-      if (currentLocalData[id]) {
-        currentLocalData[id].name = name;
-        currentLocalData[id].new = false;
-        writeToLocalFile(dataFilePath, currentLocalData);
-        console.log(`Set name for ${id} to ${name} (Firebase not accessible, using local storage)`);
-        res.status(200).send('Name updated (local only)');
+  let currentLocalData = readLocalFile(dataFilePath);
+  if (currentLocalData[id]) {
+    currentLocalData[id].name = name;
+    currentLocalData[id].new = false;
+    writeToLocalFile(dataFilePath, currentLocalData); // Update local JSON first
+
+    // Sync to Firebase
+    syncToFirebase(currentLocalData);
+
+    // Original Firebase update
+    currentDataRef.child(id).update({ name, new: false }, (error) => {
+      if (error) {
+        console.error('Error updating name in Firebase:', error);
+        console.log(`Set name for ${id} to ${name} (Firebase failed, local success)`);
+        res.status(200).send('Name updated (local only due to Firebase failure)');
       } else {
-        res.status(404).send('Client ID not found');
+        console.log(`Set name for ${id} to ${name}`);
+        res.status(200).send('Name updated');
       }
-    }
-  });
+    });
+  } else {
+    res.status(404).send('Client ID not found');
+  }
 });
 
-// DELETE /delete - Delete a sensor (update both Firebase and local JSON)
+// DELETE /delete - Delete a sensor (update local JSON first, then sync to Firebase)
 app.delete('/delete', (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).send('Missing id in payload');
 
-  const updates = {};
-  updates[`currentData/${id}`] = null;
-  updates[`oldData/${id}`] = null;
+  let currentLocalData = readLocalFile(dataFilePath);
+  let oldLocalData = readLocalFile(oldDataFilePath);
 
-  db.ref().update(updates, (error) => {
-    if (error) {
-      console.error('Error deleting client in Firebase:', error);
-      // Fallback to local delete
-      let currentLocalData = readLocalFile(dataFilePath);
-      let oldLocalData = readLocalFile(oldDataFilePath);
-      if (currentLocalData[id]) {
-        delete currentLocalData[id];
-        delete oldLocalData[id];
-        writeToLocalFile(dataFilePath, currentLocalData);
-        writeToLocalFile(oldDataFilePath, oldLocalData);
-        console.log(`Deleted client ${id} (Firebase failed, using local storage)`);
+  if (currentLocalData[id]) {
+    delete currentLocalData[id];
+    delete oldLocalData[id];
+    writeToLocalFile(dataFilePath, currentLocalData); // Update local JSON first
+    writeToLocalFile(oldDataFilePath, oldLocalData);
+
+    // Sync to Firebase
+    syncToFirebase(currentLocalData);
+
+    // Original Firebase delete
+    const updates = {};
+    updates[`currentData/${id}`] = null;
+    updates[`oldData/${id}`] = null;
+
+    db.ref().update(updates, (error) => {
+      if (error) {
+        console.error('Error deleting client in Firebase:', error);
+        console.log(`Deleted client ${id} (Firebase failed, local success)`);
         res.status(200).send('Client deleted (local only due to Firebase failure)');
       } else {
-        res.status(404).send('Client ID not found');
-      }
-    } else {
-      // Firebase delete succeeded, now update local JSON
-      let currentLocalData = readLocalFile(dataFilePath);
-      let oldLocalData = readLocalFile(oldDataFilePath);
-      if (currentLocalData[id]) {
-        delete currentLocalData[id];
-        delete oldLocalData[id];
-        writeToLocalFile(dataFilePath, currentLocalData);
-        writeToLocalFile(oldDataFilePath, oldLocalData);
         console.log(`Deleted client ${id}`);
         res.status(200).send('Client deleted');
-      } else {
-        res.status(404).send('Client ID not found');
       }
-    }
-  });
+    });
+  } else {
+    res.status(404).send('Client ID not found');
+  }
 });
 
 // Start the server
