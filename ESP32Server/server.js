@@ -19,17 +19,22 @@ admin.initializeApp({
 const db = admin.database();
 const currentDataRef = db.ref('currentData');
 const oldDataRef = db.ref('oldData');
+const historyRef = db.ref('history'); // New reference for historical data
 
 // Local JSON file paths
 const dataFilePath = path.join(__dirname, 'data.json');
 const oldDataFilePath = path.join(__dirname, 'old_data.json');
+const historyFilePath = path.join(__dirname, 'history.json'); // New file for historical data
 
-// Initialize local JSON files if they don’t exist
+// Initialize local JSON files if they don't exist
 if (!fs.existsSync(dataFilePath)) {
   fs.writeFileSync(dataFilePath, JSON.stringify({}));
 }
 if (!fs.existsSync(oldDataFilePath)) {
   fs.writeFileSync(oldDataFilePath, JSON.stringify({}));
+}
+if (!fs.existsSync(historyFilePath)) {
+  fs.writeFileSync(historyFilePath, JSON.stringify({}));
 }
 
 // Helper function to read local JSON file with error handling
@@ -52,14 +57,47 @@ const writeToLocalFile = (filePath, data) => {
 };
 
 // Function to sync local JSON to Firebase
-const syncToFirebase = async (data) => {
+const syncToFirebase = async (data, reference) => {
   try {
-    await currentDataRef.set(data); // Copy the entire local JSON content to Firebase
-    console.log('Successfully synced data.json to Firebase');
+    await reference.set(data); // Copy the entire local JSON content to Firebase
+    console.log(`Successfully synced to Firebase reference: ${reference.toString()}`);
   } catch (error) {
     console.error('Error syncing to Firebase:', error);
-    // Failure to sync doesn’t affect local operation
+    // Failure to sync doesn't affect local operation
   }
+};
+
+// Store a reading in the history
+const storeInHistory = (id, data) => {
+  const timestamp = Date.now();
+  const readingData = { ...data, timestamp };
+  delete readingData.new; // We don't need to track 'new' status in history
+
+  // Update local history
+  let historyData = readLocalFile(historyFilePath);
+  if (!historyData[id]) {
+    historyData[id] = [];
+  }
+
+  // Add new reading to history array (keeping most recent readings at the beginning)
+  historyData[id].unshift(readingData);
+
+  // Optionally limit history length (e.g., keep last 100 readings per sensor)
+  const maxHistoryLength = 100; // Adjust as needed
+  if (historyData[id].length > maxHistoryLength) {
+    historyData[id] = historyData[id].slice(0, maxHistoryLength);
+  }
+
+  writeToLocalFile(historyFilePath, historyData);
+
+  // Update Firebase history
+  historyRef.child(id).set(historyData[id], (error) => {
+    if (error) {
+      console.error(`Error storing history for ${id} in Firebase:`, error);
+    } else {
+      console.log(`Added reading to history for ${id}`);
+    }
+  });
 };
 
 // GET /data.json - Serve the local data.json file
@@ -95,9 +133,14 @@ app.post('/update', (req, res) => {
   writeToLocalFile(dataFilePath, currentLocalData);
 
   // Step 4: Sync the updated local JSON to Firebase
-  syncToFirebase(currentLocalData);
+  syncToFirebase(currentLocalData, currentDataRef);
 
-  // Step 5: Update Firebase currentData (original behavior) and local old data
+  // Step 5: Store in history if data is different
+  if (!isSame) {
+    storeInHistory(id, incomingData);
+  }
+
+  // Step 6: Update Firebase currentData (original behavior) and local old data
   currentDataRef.child(id).set(incomingData, (error) => {
     if (error) {
       console.error('Error updating current data in Firebase:', error);
@@ -147,6 +190,68 @@ app.get('/data', (req, res) => {
   });
 });
 
+// GET /history/:id - Retrieve historical data for a specific sensor
+app.get('/history/:id', (req, res) => {
+  const id = req.params.id;
+  if (!id) return res.status(400).send('Missing sensor ID');
+
+  const limit = parseInt(req.query.limit) || 100; // Optional limit parameter
+
+  historyRef.child(id).limitToFirst(limit).once('value', (snapshot) => {
+    const data = snapshot.val() || [];
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).send(JSON.stringify(data, null, 2));
+  }, (error) => {
+    console.error(`Error reading history for ${id} from Firebase:`, error);
+    // Fallback to local JSON
+    const historyData = readLocalFile(historyFilePath);
+    const sensorHistory = historyData[id] || [];
+    const limitedHistory = sensorHistory.slice(0, limit);
+
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).send(JSON.stringify(limitedHistory, null, 2));
+  });
+});
+
+// GET /history - Retrieve all historical data (with optional filtering)
+app.get('/history', (req, res) => {
+  const { startDate, endDate, limit } = req.query;
+  const startTimestamp = startDate ? new Date(startDate).getTime() : 0;
+  const endTimestamp = endDate ? new Date(endDate).getTime() : Date.now();
+  const maxResults = parseInt(limit) || 1000; // Default to 1000 entries max
+
+  historyRef.once('value', (snapshot) => {
+    const allHistory = snapshot.val() || {};
+    let filteredHistory = {};
+
+    // Apply date filtering for each sensor
+    Object.keys(allHistory).forEach(id => {
+      filteredHistory[id] = allHistory[id].filter(entry =>
+        entry.timestamp >= startTimestamp && entry.timestamp <= endTimestamp
+      ).slice(0, maxResults);
+    });
+
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).send(JSON.stringify(filteredHistory, null, 2));
+  }, (error) => {
+    console.error('Error reading history from Firebase:', error);
+    // Fallback to local JSON with filtering
+    const historyData = readLocalFile(historyFilePath);
+    let filteredHistory = {};
+
+    Object.keys(historyData).forEach(id => {
+      if (Array.isArray(historyData[id])) {
+        filteredHistory[id] = historyData[id].filter(entry =>
+          entry.timestamp >= startTimestamp && entry.timestamp <= endTimestamp
+        ).slice(0, maxResults);
+      }
+    });
+
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).send(JSON.stringify(filteredHistory, null, 2));
+  });
+});
+
 // POST /set-name - Set a name for a sensor (update local JSON first, then sync to Firebase)
 app.post('/set-name', (req, res) => {
   const { id, name } = req.body;
@@ -159,7 +264,7 @@ app.post('/set-name', (req, res) => {
     writeToLocalFile(dataFilePath, currentLocalData); // Update local JSON first
 
     // Sync to Firebase
-    syncToFirebase(currentLocalData);
+    syncToFirebase(currentLocalData, currentDataRef);
 
     // Original Firebase update
     currentDataRef.child(id).update({ name, new: false }, (error) => {
@@ -184,20 +289,25 @@ app.delete('/delete', (req, res) => {
 
   let currentLocalData = readLocalFile(dataFilePath);
   let oldLocalData = readLocalFile(oldDataFilePath);
+  let historyData = readLocalFile(historyFilePath);
 
   if (currentLocalData[id]) {
     delete currentLocalData[id];
     delete oldLocalData[id];
+    delete historyData[id];  // Also remove history for this sensor
+
     writeToLocalFile(dataFilePath, currentLocalData); // Update local JSON first
     writeToLocalFile(oldDataFilePath, oldLocalData);
+    writeToLocalFile(historyFilePath, historyData);
 
     // Sync to Firebase
-    syncToFirebase(currentLocalData);
+    syncToFirebase(currentLocalData, currentDataRef);
 
-    // Original Firebase delete
+    // Original Firebase delete with history
     const updates = {};
     updates[`currentData/${id}`] = null;
     updates[`oldData/${id}`] = null;
+    updates[`history/${id}`] = null;  // Also remove history data
 
     db.ref().update(updates, (error) => {
       if (error) {
